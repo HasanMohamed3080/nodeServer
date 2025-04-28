@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قائمة المهام | نظام التراخيص</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { font-family: 'Tajawal', sans-serif; background-color: #f5f5f5; }
+    .todo-container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; }
+    .todo-header { text-align: center; margin-bottom: 25px; }
+    .todo-list { list-style: none; padding: 0; }
+    .todo-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .todo-item:last-child { border-bottom: none; }
+    .todo-text { flex: 1; }
+    .delete-btn { color: #dc3545; border: none; background: none; font-size: 1.2rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
+  <div id="loading-spinner" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 999; justify-content: center; align-items: center;">
+    <div class="spinner-border text-light" role="status">
+      <span class="visually-hidden">جاري التحميل...</span>
+    </div>
+  </div>
+  <div class="todo-container">
+    <div class="todo-header">
+      <h2><i class="fas fa-boxes me-2"></i> المخزون</h2>
+      <p id="user-phone"></p>
+      <button class="btn btn-outline-danger btn-sm" onclick="logout()"><i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج</button>
+    </div>
+    <form id="task-form" class="mb-3">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <input type="text" id="name-input" class="form-control" placeholder="اسم المنتج" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="code-input" class="form-control" placeholder="الكود" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="origin-input" class="form-control" placeholder="المنشأ" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="supplier-input" class="form-control" placeholder="المورد" required>
+        </div>
+        <div class="col-md-4">
+          <input type="number" id="purchase-price-input" class="form-control" placeholder="سعر الشراء" required>
+        </div>
+        <div class="col-md-4">
+          <input type="number" id="sale-price-input" class="form-control" placeholder="سعر البيع" required>
+        </div>
+        <div class="col-md-4">
+          <input type="number" id="quantity-input" class="form-control" placeholder="الكمية" required>
+        </div>
+        <div class="col-12">
+          <input type="text" id="alternatives-input" class="form-control" placeholder="البدائل (افصل بينها بفاصلة)">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary w-100">إضافة منتج</button>
+        </div>
+      </div>
+    </form>
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>الاسم</th>
+            <th>المنشأ</th>
+            <th>المورد</th>
+            <th>سعر الشراء</th>
+            <th>سعر البيع</th>
+            <th>الكمية</th>
+            <th>البدائل</th>
+            <th>آخر تحديث</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="task-list"></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    function showLoading() {
+      document.getElementById('loading-spinner').style.display = 'flex';
+    }
+    function hideLoading() {
+      document.getElementById('loading-spinner').style.display = 'none';
+    }
+    function showToast(message, type = 'success') {
+      const toastContainer = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast show bg-${type} text-white`;
+      toast.style.marginBottom = '10px';
+      toast.innerHTML = `
+        <div class="toast-header bg-${type} text-white">
+          <strong class="me-auto">${type === 'success' ? 'نجاح' : 'خطأ'}</strong>
+          <button type="button" class="btn-close btn-close-white" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+        <div class="toast-body">${message}</div>
+      `;
+      toastContainer.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 5000);
+    }
+    // التحقق من تسجيل الدخول
+    let user = null;
+    document.addEventListener('DOMContentLoaded', function() {
+      user = JSON.parse(localStorage.getItem('user'));
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      document.getElementById('user-phone').textContent = 'رقم الهاتف: ' + user.phone;
+      loadTasks();
+    });
+    // تحميل المهام
+    async function loadTasks() {
+      showLoading();
+      try {
+        const response = await fetch('/api/tasks', {
+          headers: { 'Authorization': user._id }
+        });
+        const tasks = await response.json();
+        if (!Array.isArray(tasks)) throw new Error('خطأ في تحميل المنتجات');
+        renderTasks(tasks);
+      } catch (error) {
+        showToast(error.message || 'حدث خطأ أثناء تحميل المنتجات', 'danger');
+      } finally {
+        hideLoading();
+      }
+    }
+    // عرض المهام
+    function renderTasks(tasks) {
+      const list = document.getElementById('task-list');
+      list.innerHTML = '';
+      tasks.forEach(task => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${task.code}</td>
+          <td>${task.name}</td>
+          <td>${task.origin}</td>
+          <td>${task.supplier}</td>
+          <td>${task.purchasePrice}</td>
+          <td>${task.salePrice}</td>
+          <td>${task.quantity}</td>
+          <td>${task.alternatives.join(', ') || '-'}</td>
+          <td>${new Date(task.updatedAt).toLocaleString('ar')}</td>
+          <td>
+            <button class="btn btn-sm btn-danger" onclick="deleteTask('${task._id}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        `;
+        list.appendChild(tr);
+      });
+    }
+    // إضافة مهمة
+    document.getElementById('task-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      try {
+        // Gather form data
+        const formData = {
+          name: document.getElementById('name-input').value.trim(),
+          code: document.getElementById('code-input').value.trim(),
+          origin: document.getElementById('origin-input').value.trim(),
+          supplier: document.getElementById('supplier-input').value.trim(),
+          purchasePrice: parseFloat(document.getElementById('purchase-price-input').value),
+          salePrice: parseFloat(document.getElementById('sale-price-input').value),
+          quantity: parseInt(document.getElementById('quantity-input').value),
+          alternatives: document.getElementById('alternatives-input').value
+            .split(',')
+            .map(alt => alt.trim())
+            .filter(alt => alt.length > 0)
+        };
+
+        // Validate data before sending
+        if (!formData.name || !formData.code || !formData.origin || !formData.supplier) {
+          throw new Error('جميع الحقول مطلوبة');
+        }
+
+        if (isNaN(formData.purchasePrice) || isNaN(formData.salePrice) || isNaN(formData.quantity)) {
+          throw new Error('يجب إدخال أرقام صحيحة للأسعار والكمية');
+        }
+
+        showLoading();
+        
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': user._id
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'فشل إضافة المنتج');
+        }
+
+        // Clear form and reload tasks on success
+        this.reset();
+        await loadTasks();
+        showToast('تم إضافة المنتج بنجاح');
+      } catch (error) {
+        showToast(error.message || 'حدث خطأ أثناء إضافة المنتج', 'danger');
+        console.error('[addTask Error]:', error);
+      } finally {
+        hideLoading();
+      }
+    });
+    // حذف مهمة
+    window.deleteTask = async function(id) {
+      if (!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
+      showLoading();
+      try {
+        const response = await fetch('/api/tasks/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': user._id } // Correct: sending _id
+        });
+        if (!response.ok) throw new Error('فشل حذف المهمة');
+        loadTasks();
+      } catch (error) {
+        showToast(error.message || 'حدث خطأ أثناء حذف المهمة', 'danger');
+      } finally {
+        hideLoading();
+      }
+    }
+    // تسجيل الخروج
+    function logout() {
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>
