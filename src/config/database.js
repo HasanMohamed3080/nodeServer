@@ -4,7 +4,7 @@ const connectDB = async () => {
   try {
     // Try connecting with more explicit options
     const mongoURI =
-      process.env.MONGODB_URI || "mongodb://admin:admin@localhost:27017/admin";
+      process.env.MONGODB_URI ;
 
     console.log("Attempting to connect to MongoDB...");
 

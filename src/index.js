@@ -10,6 +10,8 @@ import userRoutes from "./Routes/userRoutes.js";
 import licenseRoutes from "./Routes/licenseRoutes.js";
 import adminRoutes from "./Routes/adminRoutes.js";
 import taskRoutes from "./Routes/productRoutes.js";
+import statisticsRoutes from './Routes/staticsRoutes.js';
+import historyRoutes from "./Routes/historyRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 // Connect to MongoDB
@@ -38,6 +40,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/licenses", licenseRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/history", historyRoutes); // Add the history routes
+app.use('/api/statistics', statisticsRoutes);
 
 // Add a route for the root path
 app.get("/", (req, res) => {
