@@ -8,7 +8,6 @@ import { fileURLToPath } from "url";
 import connectDB from "./config/database.js";
 import userRoutes from "./Routes/userRoutes.js";
 import licenseRoutes from "./Routes/licenseRoutes.js";
-import adminRoutes from "./Routes/adminRoutes.js";
 import taskRoutes from "./Routes/productRoutes.js";
 import statisticsRoutes from './Routes/staticsRoutes.js';
 import historyRoutes from "./Routes/historyRoutes.js";
@@ -38,7 +37,6 @@ app.use(express.static(path.join(__dirname, "../public")));
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/licenses", licenseRoutes);
-app.use("/api/admin", adminRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/history", historyRoutes); // Add the history routes
 app.use('/api/statistics', statisticsRoutes);
@@ -52,6 +50,6 @@ app.get("/", (req, res) => {
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
